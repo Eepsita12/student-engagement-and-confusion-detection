@@ -120,7 +120,7 @@ Teacher Dashboard (Live UI)
 
 ---
 
-## How It Works (Simple Explanation)
+## System Working
 
 ### 1. Face Detection (Integrity Check)
 
@@ -257,3 +257,4 @@ Alerts are intentionally **conservative** to ensure reliability.
 ---
 
 ## Thank You
+
