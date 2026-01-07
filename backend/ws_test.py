@@ -1,3 +1,5 @@
+# File to test WebSocket connection with the backend.
+
 import websockets
 import asyncio
 
