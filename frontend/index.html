@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard</title>
+
+    <style>
+        :root {
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            
+            --status-focus-bg: #ecfdf5;
+            --status-focus-text: #047857;
+            --status-confused-bg: #fffbeb;
+            --status-confused-text: #b45309;
+            --status-alert-bg: #fef2f2;
+            --status-alert-text: #b91c1c;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dashboard-card {
+            background-color: var(--card-bg);
+            border-radius: 24px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            width: 90%;
+            max-width: 650px;
+            text-align: center;
+            overflow: hidden; 
+            padding: 2.5rem;
+            padding-bottom: 0; 
+        }
+
+        header {
+            margin-bottom: 2.5rem;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            margin: 0;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .live-dot {
+            height: 8px;
+            width: 8px;
+            background-color: #10b981;
+            border-radius: 50%;
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        #status {
+            padding: 3rem 1.5rem;
+            border-radius: 16px;
+            margin-bottom: 2.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .status-label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.75rem;
+            opacity: 0.7;
+        }
+
+        #status-text {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+        }
+
+        .focused { background-color: var(--status-focus-bg); color: var(--status-focus-text); }
+        .confused { background-color: var(--status-confused-bg); color: var(--status-confused-text); }
+        .alert { background-color: var(--status-alert-bg); color: var(--status-alert-text); }
+
+        h3 {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        #timeline {
+            display: flex;
+            gap: 4px;
+            height: 80px; 
+            align-items: center;
+            overflow-x: auto;
+            margin-left: -2.5rem;
+            margin-right: -2.5rem;
+            padding: 0 2.5rem; 
+            background: #f9fafb;
+            border-top: 1px solid #e5e7eb;
+            scroll-behavior: smooth;
+        }
+        
+        #timeline::-webkit-scrollbar {
+            height: 6px;
+        }
+        #timeline::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 3px;
+        }
+        #timeline::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .timeline-item {
+            min-width: 10px;
+            height: 30px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+        
+        .timeline-focused { background-color: #34d399; }
+        .timeline-confused { background-color: #fbbf24; }
+        .timeline-alert { background-color: #f87171; }
+
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-card">
+        <header>
+            <h1>Classroom Monitor</h1>
+            <div class="subtitle">
+                <span class="live-dot"></span> 
+                Live Engagement Analysis
+            </div>
+        </header>
+
+        <div id="status" class="focused">
+            <span class="status-label">Current Status</span>
+            <span id="status-text">Connecting...</span>
+        </div>
+
+        <h3>Session Timeline</h3>
+        
+        <div id="timeline"></div>
+    </div>
+
+    <script>
+        const statusDiv = document.getElementById("status");
+        const statusText = document.getElementById("status-text");
+        const timelineDiv = document.getElementById("timeline");
+        
+        const ws = new WebSocket("ws://127.0.0.1:8000/ws");
+
+        ws.onopen = () => {
+            console.log("Connected");
+            statusText.textContent = "Waiting for data...";
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            const current = data.current;
+
+            let message = "Student is Focused";
+            let className = "focused";
+
+            if (current.alert) {
+                if (current.faces > 1) message = "Multiple Faces Detected";
+                else if (current.faces === 0) message = "No Face Detected";
+                else message = "Proctor Alert";
+                className = "alert";
+            }
+            else if (current.emotion === "confused") {
+                message = "Student is Confused";
+                className = "confused";
+            }
+            else if (current.emotion === "happy") {
+                message = "Student is Happy";
+                className = "focused"; 
+            }
+
+            statusText.textContent = message;
+            statusDiv.className = ""; 
+            statusDiv.classList.add(className);
+
+            timelineDiv.innerHTML = "";
+            
+            data.timeline.forEach(item => {
+                const block = document.createElement("div");
+                block.classList.add("timeline-item");
+
+                if (item.alert) block.classList.add("timeline-alert");
+                else if (item.emotion === "confused") block.classList.add("timeline-confused");
+                else block.classList.add("timeline-focused");
+
+                timelineDiv.appendChild(block);
+            });
+            
+            setTimeout(() => {
+                timelineDiv.scrollLeft = timelineDiv.scrollWidth;
+            }, 10);
+        };
+    </script>
+</body>
+</html>
